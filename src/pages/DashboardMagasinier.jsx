@@ -8,7 +8,7 @@ import AjouterSortie from './AjouterSortie';
 import GestionMouvements from './GestionMouvements';
 import Historique from './Historique';
 import Bac from './Bac';
-
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
 const DashboardMagasinier = ({ user }) => {
   const [currentDateTime, setCurrentDateTime] = useState(new Date());
   const [showAjouterProduit, setShowAjouterProduit] = useState(false);
@@ -54,7 +54,7 @@ const DashboardMagasinier = ({ user }) => {
 
   const fetchAllMouvements = async () => {
     try {
-      const res = await fetch('http://localhost:8080/api/mouvements');
+      const res = await fetch(`${API_URL}/api/mouvements`);
       if (res.ok) {
         const data = await res.json();
         setAllMouvements(data);
@@ -66,7 +66,7 @@ const DashboardMagasinier = ({ user }) => {
 
   const fetchTopBacs = async () => {
     try {
-      const res = await fetch('http://localhost:8080/api/mouvements/top-bacs');
+      const res = await fetch(`${API_URL}/api/mouvements/top-bacs`);
       if (res.ok) {
         const data = await res.json();
         setTopBacsData(data);
@@ -79,14 +79,14 @@ const DashboardMagasinier = ({ user }) => {
   const fetchKPIs = async () => {
     setKpis(prev => ({ ...prev, loading: true }));
     try {
-      const [mouvementsRes, totalRes, alertesRes, stockTotalRes, alertesDetailsRes, derniersRes] = await Promise.all([
-        fetch('http://localhost:8080/api/mouvements/stats/today'),
-        fetch('http://localhost:8080/api/mouvements/stats/total-produits'),
-        fetch('http://localhost:8080/api/mouvements/stats/alertes'),
-        fetch('http://localhost:8080/api/mouvements/stats/stock-total'),
-        fetch('http://localhost:8080/api/mouvements/alertes-details'),
-        fetch('http://localhost:8080/api/mouvements/derniers')
-      ]);
+     const [mouvementsRes, totalRes, alertesRes, stockTotalRes, alertesDetailsRes, derniersRes] = await Promise.all([
+  fetch(`${API_URL}/api/mouvements/stats/today`),
+  fetch(`${API_URL}/api/mouvements/stats/total-produits`),
+  fetch(`${API_URL}/api/mouvements/stats/alertes`),
+  fetch(`${API_URL}/api/mouvements/stats/stock-total`),
+  fetch(`${API_URL}/api/mouvements/alertes-details`),
+  fetch(`${API_URL}/api/mouvements/derniers`)
+]);
       const mouvements = await mouvementsRes.json();
       const totalData = await totalRes.json();
       const alertes = await alertesRes.json();
@@ -114,7 +114,7 @@ const DashboardMagasinier = ({ user }) => {
     setShowImprimerModal(true);
     setLoadingImprimer(true);
     try {
-      const res = await fetch('http://localhost:8080/api/mouvements/recents');
+      const res = await fetch(`${API_URL}/api/mouvements/recents`);
       if (res.ok) {
         const data = await res.json();
         setMouvementsImprimer(data.filter(m => m.type === 'ENTREE'));
@@ -128,7 +128,7 @@ const DashboardMagasinier = ({ user }) => {
 
   const getStockActuel = async (reference, bacCode) => {
     try {
-      const res = await fetch('http://localhost:8080/api/mouvements');
+const res = await fetch(`${API_URL}/api/mouvements`);
       if (!res.ok) return null;
       const all = await res.json();
       const filtered = all.filter(m => m.reference === reference && m.bac?.code === bacCode);
@@ -197,7 +197,7 @@ const DashboardMagasinier = ({ user }) => {
 
   const handleExportPDF = async () => {
     try {
-      const res = await fetch('http://localhost:8080/api/mouvements');
+  const res = await fetch(`${API_URL}/api/mouvements`);
       if (!res.ok) throw new Error('Erreur chargement données');
       const mouvements = await res.json();
 

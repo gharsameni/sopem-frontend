@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
 const GestionMouvements = ({ onClose }) => {
   const [mouvements, setMouvements] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -14,7 +14,7 @@ const GestionMouvements = ({ onClose }) => {
 
   const loadBacs = async () => {
     try {
-      const res = await fetch('http://localhost:8080/api/bacs');
+    const res = await fetch(`${API_URL}/api/bacs`);
       if (res.ok) setBacs(await res.json());
     } catch (err) {
       console.error('Erreur bacs:', err);
@@ -24,7 +24,7 @@ const GestionMouvements = ({ onClose }) => {
   const loadMouvements = async () => {
     setLoading(true);
     try {
-      const response = await fetch('http://localhost:8080/api/mouvements/recents');
+     const response = await fetch(`${API_URL}/api/mouvements/recents`);
       if (response.ok) setMouvements(await response.json());
     } catch (err) {
       console.error(err);
@@ -49,7 +49,7 @@ const GestionMouvements = ({ onClose }) => {
 
   const handleSaveEdit = async (id) => {
     try {
-      const response = await fetch(`http://localhost:8080/api/mouvements/${id}`, {
+   const response = await fetch(`${API_URL}/api/mouvements/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(editData),
@@ -67,7 +67,7 @@ const GestionMouvements = ({ onClose }) => {
   const handleDelete = async (id) => {
     if (!window.confirm('⚠️ Voulez-vous vraiment supprimer ce mouvement ?')) return;
     try {
-      const response = await fetch(`http://localhost:8080/api/mouvements/${id}`, { 
+   const response = await fetch(`${API_URL}/api/mouvements/${id}`, {
         method: 'DELETE' 
       });
       if (!response.ok) throw new Error('Erreur lors de la suppression');
@@ -80,7 +80,7 @@ const GestionMouvements = ({ onClose }) => {
 
   const getStockActuel = async (reference, bacCode) => {
     try {
-      const res = await fetch('http://localhost:8080/api/mouvements');
+      const res = await fetch(`${API_URL}/api/mouvements`);
       if (!res.ok) return null;
       const all = await res.json();
       const filtered = all.filter(m => m.reference === reference && m.bac?.code === bacCode);

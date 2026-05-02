@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
 const Bac = ({ onClose }) => {
   const [bacs, setBacs] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -14,7 +14,7 @@ const Bac = ({ onClose }) => {
   const fetchBacs = async () => {
     setLoading(true);
     try {
-      const res = await fetch('http://localhost:8080/api/bacs');
+    const res = await fetch(`${API_URL}/api/bacs`);
       if (res.ok) setBacs(await res.json());
     } catch (err) { console.error(err); }
     finally { setLoading(false); }
@@ -44,10 +44,10 @@ const Bac = ({ onClose }) => {
         code: formData.code.trim().toUpperCase(),
       };
 
-      const url = editingBac
-        ? `http://localhost:8080/api/bacs/${editingBac.id_bac}`
-        : 'http://localhost:8080/api/bacs/ajouter';
-      const method = editingBac ? 'PUT' : 'POST';
+   const url = editingBac
+  ? `${API_URL}/api/bacs/${editingBac.id_bac}`
+  : `${API_URL}/api/bacs/ajouter`;
+const method = editingBac ? 'PUT' : 'POST';
 
       const res = await fetch(url, {
         method,
@@ -72,7 +72,7 @@ const Bac = ({ onClose }) => {
   const handleSupprimer = async (bac) => {
     if (!window.confirm(`⚠️ Supprimer le bac ${bac.code} ?`)) return;
     try {
-      const res = await fetch(`http://localhost:8080/api/bacs/${bac.id_bac}`, { method: 'DELETE' });
+    const res = await fetch(`${API_URL}/api/bacs/${bac.id_bac}`, { method: 'DELETE' });
       if (!res.ok) throw new Error('Erreur lors de la suppression');
       fetchBacs();
     } catch (err) {

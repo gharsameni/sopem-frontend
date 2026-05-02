@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import toast from 'react-hot-toast';
 import Historique from './Historique';
-
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
 const DashboardChefAtelier = ({ user }) => {
   const [currentDateTime, setCurrentDateTime] = useState(new Date());
   const [kpis, setKpis] = useState({
@@ -36,12 +36,13 @@ const DashboardChefAtelier = ({ user }) => {
     
     try {
       // Charger KPIs
-      const [mouvementsRes, totalRes, stockTotalRes, derniersRes] = await Promise.all([
-        fetch('http://localhost:8080/api/mouvements/stats/today'),
-        fetch('http://localhost:8080/api/mouvements/stats/total-produits'),
-        fetch('http://localhost:8080/api/mouvements/stats/stock-total'),
-        fetch('http://localhost:8080/api/mouvements/derniers')
-      ]);
+      
+   const [mouvementsRes, totalRes, stockTotalRes, derniersRes] = await Promise.all([
+  fetch(`${API_URL}/api/mouvements/stats/today`),
+  fetch(`${API_URL}/api/mouvements/stats/total-produits`),
+  fetch(`${API_URL}/api/mouvements/stats/stock-total`),
+  fetch(`${API_URL}/api/mouvements/derniers`)
+]);
 
       const mouvements = await mouvementsRes.json();
       const totalData = await totalRes.json();
@@ -59,7 +60,7 @@ const DashboardChefAtelier = ({ user }) => {
       setDerniersMovements(derniers.slice(0, 10) || []);
 
       // Charger tous les mouvements pour calculer stock par opération
-      const allMouvementsRes = await fetch('http://localhost:8080/api/mouvements');
+    const allMouvementsRes = await fetch(`${API_URL}/api/mouvements`);
       const allMouvements = await allMouvementsRes.json();
       setAllMouvements(allMouvements);
 
@@ -162,7 +163,7 @@ const DashboardChefAtelier = ({ user }) => {
     }
 
     try {
-      const res = await fetch('http://localhost:8080/api/mouvements');
+   const res = await fetch(`${API_URL}/api/mouvements`);
       if (!res.ok) throw new Error('Erreur chargement');
       
       const allMouvements = await res.json();

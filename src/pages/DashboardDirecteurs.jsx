@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import toast from 'react-hot-toast';
 import Historique from './Historique';
-
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
 const DashboardDirecteurs = ({ user }) => {
   const [currentDateTime, setCurrentDateTime] = useState(new Date());
   const [showHistorique, setShowHistorique] = useState(false);
@@ -47,13 +47,13 @@ const DashboardDirecteurs = ({ user }) => {
     setKpis(prev => ({ ...prev, loading: true }));
     try {
       const [mouvementsRes, totalRes, alertesRes, stockTotalRes, alertesDetailsRes, derniersRes] = await Promise.all([
-        fetch('http://localhost:8080/api/mouvements/stats/today'),
-        fetch('http://localhost:8080/api/mouvements/stats/total-produits'),
-        fetch('http://localhost:8080/api/mouvements/stats/alertes'),
-        fetch('http://localhost:8080/api/mouvements/stats/stock-total'),
-        fetch('http://localhost:8080/api/mouvements/alertes-details'),
-        fetch('http://localhost:8080/api/mouvements/derniers')
-      ]);
+  fetch(`${API_URL}/api/mouvements/stats/today`),
+  fetch(`${API_URL}/api/mouvements/stats/total-produits`),
+  fetch(`${API_URL}/api/mouvements/stats/alertes`),
+  fetch(`${API_URL}/api/mouvements/stats/stock-total`),
+  fetch(`${API_URL}/api/mouvements/alertes-details`),
+  fetch(`${API_URL}/api/mouvements/derniers`)
+]);
       const mouvements = await mouvementsRes.json();
       const totalData = await totalRes.json();
       const alertes = await alertesRes.json();
@@ -78,7 +78,7 @@ const DashboardDirecteurs = ({ user }) => {
 
   const fetchAllMouvements = async () => {
     try {
-      const res = await fetch('http://localhost:8080/api/mouvements');
+    const res = await fetch(`${API_URL}/api/mouvements`);
       if (res.ok) {
         const data = await res.json();
         setAllMouvements(data);
@@ -129,7 +129,7 @@ const DashboardDirecteurs = ({ user }) => {
 
     setLoadingRecherche(true);
     try {
-      const res = await fetch('http://localhost:8080/api/mouvements');
+   const res = await fetch(`${API_URL}/api/mouvements`);
       if (!res.ok) throw new Error('Erreur chargement');
       
       const allMouvements = await res.json();
@@ -186,7 +186,7 @@ const DashboardDirecteurs = ({ user }) => {
   const chargerStockProduitsFinis = async () => {
     setLoadingStockProduits(true);
     try {
-      const res = await fetch('http://localhost:8080/api/mouvements');
+const res = await fetch(`${API_URL}/api/mouvements`);
       if (!res.ok) throw new Error('Erreur chargement');
       
       const allMouvements = await res.json();

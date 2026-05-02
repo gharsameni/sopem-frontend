@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
-
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
 const AjouterProduit = ({ onSuccess, onClose }) => {
   const [formData, setFormData] = useState({
     reference: '',
@@ -31,7 +31,7 @@ const AjouterProduit = ({ onSuccess, onClose }) => {
 
   const loadOperations = async () => {
     try {
-      const response = await fetch('http://localhost:8080/api/operations/liste');
+     const response = await fetch(`${API_URL}/api/operations/liste`);
       
       if (!response.ok) {
         throw new Error(`Erreur HTTP: ${response.status}`);
@@ -63,7 +63,7 @@ const AjouterProduit = ({ onSuccess, onClose }) => {
     setAddingOperation(true);
     
     try {
-      const response = await fetch('http://localhost:8080/api/operations/ajouter', {
+     const response = await fetch(`${API_URL}/api/operations/ajouter`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ nom_operation: nouvelleOperation.toUpperCase().trim() })
@@ -106,7 +106,7 @@ const AjouterProduit = ({ onSuccess, onClose }) => {
     setUpdatingOperation(true);
 
     try {
-      const response = await fetch(`http://localhost:8080/api/operations/${editingOperation}`, {
+     const response = await fetch(`${API_URL}/api/operations/${editingOperation}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ nom_operation: editOperationName.toUpperCase().trim() })
@@ -136,7 +136,8 @@ const AjouterProduit = ({ onSuccess, onClose }) => {
     }
 
     try {
-      const response = await fetch(`http://localhost:8080/api/operations/${operationId}`, {
+
+const response = await fetch(`${API_URL}/api/operations/${operationId}`, {
         method: 'DELETE'
       });
 
@@ -199,7 +200,7 @@ const AjouterProduit = ({ onSuccess, onClose }) => {
     setLoading(true);
 
     try {
-    const response = await fetch('http://localhost:8080/api/produits', {
+  const response = await fetch(`${API_URL}/api/produits`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

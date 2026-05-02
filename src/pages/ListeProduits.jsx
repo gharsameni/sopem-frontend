@@ -1,5 +1,8 @@
 import React, { useState, useEffect } from 'react';
 
+// ✅ AJOUT : Variable d'environnement pour l'URL de l'API
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+
 const ListeProduits = ({ onClose }) => {
   const [produits, setProduits] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -26,7 +29,8 @@ const ListeProduits = ({ onClose }) => {
   const loadProduits = async () => {
     setLoading(true);
     try {
-      const response = await fetch('http://localhost:8080/api/produits');
+      // ✅ MODIFIÉ : Utilisation de API_URL
+      const response = await fetch(`${API_URL}/api/produits`);
       if (!response.ok) {
         throw new Error(`Erreur ${response.status}`);
       }
@@ -43,7 +47,8 @@ const ListeProduits = ({ onClose }) => {
   const loadOperations = async () => {
     setLoadingOps(true);
     try {
-      const response = await fetch('http://localhost:8080/api/operations/liste');
+      // ✅ MODIFIÉ : Utilisation de API_URL
+      const response = await fetch(`${API_URL}/api/operations/liste`);
       if (response.ok) {
         const data = await response.json();
         setOperations(Array.isArray(data) ? data : []);
@@ -83,8 +88,9 @@ const ListeProduits = ({ onClose }) => {
     }
 
     try {
+      // ✅ MODIFIÉ : Utilisation de API_URL
       const response = await fetch(
-        `http://localhost:8080/api/produits/${produit.id_produit}/${action}`,
+        `${API_URL}/api/produits/${produit.id_produit}/${action}`,
         { method: 'PUT' }
       );
 
@@ -137,7 +143,8 @@ const ListeProduits = ({ onClose }) => {
     setLoadingSubmit(true);
 
     try {
-      const response = await fetch(`http://localhost:8080/api/produits/${selectedProduit.id_produit}`, {
+      // ✅ MODIFIÉ : Utilisation de API_URL
+      const response = await fetch(`${API_URL}/api/produits/${selectedProduit.id_produit}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -175,7 +182,6 @@ const ListeProduits = ({ onClose }) => {
   };
 
   const styles = {
-    // ... (tous les styles existants restent identiques)
     overlay: {
       position: 'fixed',
       top: 0,
@@ -315,7 +321,6 @@ const ListeProduits = ({ onClose }) => {
       fontWeight: '600',
       color: '#24292e',
     },
-    // NOUVEAU : Style pour produit inactif
     tdInactif: {
       padding: '14px 8px',
       borderBottom: '1px solid #e1e4e8',
@@ -333,7 +338,6 @@ const ListeProduits = ({ onClose }) => {
       marginRight: '4px',
       marginBottom: '4px',
     },
-    // NOUVEAU : Badge inactif
     badgeInactif: {
       padding: '4px 10px',
       borderRadius: '12px',
@@ -367,7 +371,6 @@ const ListeProduits = ({ onClose }) => {
       transition: 'all 0.2s ease',
       color: '#dc2626',
     },
-    // NOUVEAU : Style bouton activer (vert)
     btnActiver: {
       padding: '6px 12px',
       fontSize: '13px',
@@ -647,7 +650,6 @@ const ListeProduits = ({ onClose }) => {
                                 ✏️ Modifier
                               </button>
                               
-                              {/* BOUTON DYNAMIQUE */}
                               {isInactif ? (
                                 <button
                                   type="button"
@@ -709,11 +711,121 @@ const ListeProduits = ({ onClose }) => {
         </div>
       </div>
 
-      {/* Modal Modifier (inchangée) */}
       {showModifier && selectedProduit && (
         <div style={styles.overlayModifier} onClick={handleCloseModifier}>
           <div style={styles.modalModifier} onClick={(e) => e.stopPropagation()}>
-            {/* ... (tout le code du modal modifier reste identique) ... */}
+            <div style={styles.header}>
+              <h2 style={styles.title}>✏️ Modifier le produit</h2>
+              <button 
+                style={styles.closeBtn}
+                onClick={handleCloseModifier}
+                type="button"
+              >
+                ×
+              </button>
+            </div>
+
+            <div style={styles.body}>
+              {errorModif && (
+                <div style={styles.errorBox}>{errorModif}</div>
+              )}
+
+              <form style={styles.form} onSubmit={handleSubmitModifier}>
+                <div style={styles.formGroup}>
+                  <label style={styles.label}>
+                    Référence <span style={styles.required}>*</span>
+                  </label>
+                  <input
+                    type="text"
+                    style={styles.input}
+                    value={formData.reference}
+                    onChange={(e) => setFormData({ ...formData, reference: e.target.value })}
+                    required
+                  />
+                </div>
+
+                <div style={styles.formGroup}>
+                  <label style={styles.label}>
+                    Désignation <span style={styles.required}>*</span>
+                  </label>
+                  <input
+                    type="text"
+                    style={styles.input}
+                    value={formData.designation}
+                    onChange={(e) => setFormData({ ...formData, designation: e.target.value })}
+                    required
+                  />
+                </div>
+
+                <div style={styles.formGroup}>
+                  <label style={styles.label}>Description</label>
+                  <textarea
+                    style={styles.textarea}
+                    value={formData.description}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    placeholder="Description détaillée du produit (optionnel)"
+                  />
+                </div>
+
+                <div style={styles.operationsSection}>
+                  <div style={styles.operationsTitle}>
+                    Opérations <span style={styles.required}>*</span>
+                  </div>
+                  {loadingOps ? (
+                    <div style={{ textAlign: 'center', padding: '2rem', color: '#586069' }}>
+                      ⏳ Chargement des opérations...
+                    </div>
+                  ) : operations.length === 0 ? (
+                    <div style={{ textAlign: 'center', padding: '2rem', color: '#586069' }}>
+                      Aucune opération disponible
+                    </div>
+                  ) : (
+                    <div style={styles.operationsGrid}>
+                      {operations.map((operation) => {
+                        const operationId = operation.id_operation || operation.id;
+                        const isSelected = formData.operationsIds.includes(operationId);
+                        
+                        return (
+                          <div
+                            key={operationId}
+                            style={isSelected ? { ...styles.operationItem, ...styles.operationItemSelected } : styles.operationItem}
+                            onClick={() => handleOperationToggle(operationId)}
+                          >
+                            <input
+                              type="checkbox"
+                              style={styles.checkbox}
+                              checked={isSelected}
+                              onChange={() => {}}
+                            />
+                            <label style={styles.operationLabel}>
+                              {operation.nom_operation || operation.nom || `Opération ${operationId}`}
+                            </label>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </form>
+            </div>
+
+            <div style={styles.footerModifier}>
+              <button
+                type="button"
+                style={styles.btnCancel}
+                onClick={handleCloseModifier}
+              >
+                Annuler
+              </button>
+              <button
+                type="submit"
+                style={isSubmitDisabled ? { ...styles.btnSubmit, ...styles.btnDisabled } : styles.btnSubmit}
+                onClick={handleSubmitModifier}
+                disabled={isSubmitDisabled}
+              >
+                {loadingSubmit ? '⏳ Modification...' : '✅ Enregistrer les modifications'}
+              </button>
+            </div>
           </div>
         </div>
       )}

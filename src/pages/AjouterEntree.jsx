@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
 const AjouterEntree = ({ onClose, onSuccess }) => {
   const [formData, setFormData] = useState({
     reference: '',
@@ -22,7 +22,7 @@ const AjouterEntree = ({ onClose, onSuccess }) => {
   const [lastMouvement, setLastMouvement] = useState(null);
 
   useEffect(() => {
-    fetch('http://localhost:8080/api/bacs')
+fetch(`${API_URL}/api/bacs`)
       .then(res => res.json())
       .then(data => setBacs(data))
       .catch(err => console.error('Erreur bacs:', err));
@@ -30,7 +30,7 @@ const AjouterEntree = ({ onClose, onSuccess }) => {
 
   const getStockActuel = async (reference, bacCode) => {
     try {
-      const res = await fetch('http://localhost:8080/api/mouvements');
+   const res = await fetch(`${API_URL}/api/mouvements`);
       if (!res.ok) return null;
       const all = await res.json();
       const filtered = all.filter(m => m.reference === reference && m.bac?.code === bacCode);
@@ -116,7 +116,7 @@ const AjouterEntree = ({ onClose, onSuccess }) => {
     setProduitError('');
 
     try {
-      const response = await fetch(`http://localhost:8080/api/produits/byReference/${refBase}`);
+      const response = await fetch(`${API_URL}/api/produits/byReference/${refBase}`);
 
       if (!response.ok) throw new Error('Produit non trouvé');
 
@@ -205,7 +205,7 @@ const AjouterEntree = ({ onClose, onSuccess }) => {
         type: 'ENTREE'
       };
 
-      const response = await fetch('http://localhost:8080/api/mouvements/ajouter', {
+   const response = await fetch(`${API_URL}/api/mouvements/ajouter`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),

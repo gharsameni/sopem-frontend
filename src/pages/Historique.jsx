@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
-
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
 const Historique = ({ onClose }) => {
   const [mouvements, setMouvements] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -15,7 +15,7 @@ const Historique = ({ onClose }) => {
   const loadMouvements = async () => {
     setLoading(true);
     try {
-      const response = await fetch('http://localhost:8080/api/mouvements/historique-avec-couts');
+    const response = await fetch(`${API_URL}/api/mouvements/historique-avec-couts`);
       if (!response.ok) throw new Error('Erreur chargement');
       const data = await response.json();
       setMouvements(data);

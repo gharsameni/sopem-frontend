@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
-
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
 const GestionUtilisateurs = ({ onClose }) => {
   const [utilisateurs, setUtilisateurs] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -23,7 +23,7 @@ const GestionUtilisateurs = ({ onClose }) => {
   const loadUtilisateurs = async () => {
     setLoading(true);
     try {
-      const res = await fetch('http://localhost:8080/api/utilisateurs');
+    const res = await fetch(`${API_URL}/api/utilisateurs`);
       if (!res.ok) throw new Error('Erreur chargement');
       const data = await res.json();
       setUtilisateurs(data);
@@ -36,7 +36,7 @@ const GestionUtilisateurs = ({ onClose }) => {
   const handleAjouter = async (e) => {
     e.preventDefault();
     try {
-      const res = await fetch('http://localhost:8080/api/utilisateurs', {
+      const res = await fetch(`${API_URL}/api/utilisateurs`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
@@ -59,7 +59,7 @@ const GestionUtilisateurs = ({ onClose }) => {
   const handleModifier = async (e) => {
     e.preventDefault();
     try {
-      const res = await fetch(`http://localhost:8080/api/utilisateurs/${userToEdit.id_user}`, {
+   const res = await fetch(`${API_URL}/api/utilisateurs/${userToEdit.id_user}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
@@ -84,7 +84,7 @@ const GestionUtilisateurs = ({ onClose }) => {
     if (!window.confirm('Êtes-vous sûr de vouloir supprimer cet utilisateur ?')) return;
     
     try {
-      const res = await fetch(`http://localhost:8080/api/utilisateurs/${id}`, {
+  const res = await fetch(`${API_URL}/api/utilisateurs/${id}`, {
         method: 'DELETE',
       });
       if (!res.ok) throw new Error('Erreur suppression');

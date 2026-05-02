@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
 const AjouterSortie = ({ onClose, onSuccess }) => {
   const [formData, setFormData] = useState({
     reference: '',
@@ -48,13 +48,13 @@ const AjouterSortie = ({ onClose, onSuccess }) => {
 
     try {
       // 1. Chercher le produit pour avoir la désignation et l'opération
-      const produitRes = await fetch(`http://localhost:8080/api/produits/byReference/${refBase}`);
+     const produitRes = await fetch(`${API_URL}/api/produits/byReference/${refBase}`);
       if (!produitRes.ok) throw new Error('Produit non trouvé');
       
       const produitData = await produitRes.json();
 
       // 2. Calculer stock par bac
-      const mouvementsRes = await fetch('http://localhost:8080/api/mouvements');
+    const mouvementsRes = await fetch(`${API_URL}/api/mouvements`);
       if (!mouvementsRes.ok) throw new Error('Erreur chargement mouvements');
       
       const allMouvements = await mouvementsRes.json();
@@ -151,7 +151,7 @@ const AjouterSortie = ({ onClose, onSuccess }) => {
     setLoading(true);
 
     try {
-      const response = await fetch('http://localhost:8080/api/mouvements/ajouter', {
+   const response = await fetch(`${API_URL}/api/mouvements/ajouter`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
