@@ -8,7 +8,7 @@ const AjouterEntree = ({ onClose, onSuccess }) => {
     nom_operation: '',
     quantite: '',
     id_bac: null,
-    coutTotal: 0, // ✅ CHANGÉ: coutTotal au lieu de cout
+    coutUnitaire: 0,
     type: 'ENTREE'
   });
 
@@ -22,7 +22,7 @@ const AjouterEntree = ({ onClose, onSuccess }) => {
   const [lastMouvement, setLastMouvement] = useState(null);
 
   useEffect(() => {
-fetch(`${API_URL}/api/bacs`)
+    fetch(`${API_URL}/api/bacs`)
       .then(res => res.json())
       .then(data => setBacs(data))
       .catch(err => console.error('Erreur bacs:', err));
@@ -30,7 +30,7 @@ fetch(`${API_URL}/api/bacs`)
 
   const getStockActuel = async (reference, bacCode) => {
     try {
-   const res = await fetch(`${API_URL}/api/mouvements`);
+      const res = await fetch(`${API_URL}/api/mouvements`);
       if (!res.ok) return null;
       const all = await res.json();
       const filtered = all.filter(m => m.reference === reference && m.bac?.code === bacCode);
@@ -93,7 +93,7 @@ fetch(`${API_URL}/api/bacs`)
     if (!refSaisie) {
       setProduit(null);
       setOperations([]);
-      setFormData(prev => ({ ...prev, designation: '', coutTotal: 0 }));
+      setFormData(prev => ({ ...prev, designation: '', coutUnitaire: 0 }));
       return;
     }
 
@@ -106,7 +106,7 @@ fetch(`${API_URL}/api/bacs`)
       setProduitError('❌ Format invalide — utilisez: 7777 ou 7777-DEC');
       setProduit(null);
       setOperations([]);
-      setFormData(prev => ({ ...prev, designation: '', coutTotal: 0 }));
+      setFormData(prev => ({ ...prev, designation: '', coutUnitaire: 0 }));
       return;
     }
 
@@ -122,11 +122,11 @@ fetch(`${API_URL}/api/bacs`)
 
       const data = await response.json();
       setProduit(data);
-      
-      setFormData(prev => ({ 
-        ...prev, 
+
+      setFormData(prev => ({
+        ...prev,
         designation: data.designation || '',
-        coutTotal: 0 // ✅ Reset à 0, user saisira manuellement
+        coutUnitaire: 0
       }));
 
       if (data.operations && Array.isArray(data.operations) && data.operations.length > 0) {
@@ -140,7 +140,7 @@ fetch(`${API_URL}/api/bacs`)
       setProduitError('❌ ' + err.message);
       setProduit(null);
       setOperations([]);
-      setFormData(prev => ({ ...prev, designation: '', coutTotal: 0 }));
+      setFormData(prev => ({ ...prev, designation: '', coutUnitaire: 0 }));
     } finally {
       setLoadingProduit(false);
     }
@@ -155,9 +155,9 @@ fetch(`${API_URL}/api/bacs`)
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!formData.reference.trim()) { 
-      setError('❌ La référence est obligatoire'); 
-      return; 
+    if (!formData.reference.trim()) {
+      setError('❌ La référence est obligatoire');
+      return;
     }
 
     const refRegex = /^(\d+)-[A-Z]{3}$/i;
@@ -166,34 +166,30 @@ fetch(`${API_URL}/api/bacs`)
       return;
     }
 
-    if (!formData.id_operation) { 
-      setError('❌ Veuillez sélectionner une opération'); 
-      return; 
+    if (!formData.id_operation) {
+      setError('❌ Veuillez sélectionner une opération');
+      return;
     }
 
-    if (!formData.quantite || formData.quantite <= 0) { 
-      setError('❌ La quantité doit être supérieure à 0'); 
-      return; 
+    if (!formData.quantite || formData.quantite <= 0) {
+      setError('❌ La quantité doit être supérieure à 0');
+      return;
     }
 
-    if (!formData.id_bac) { 
-      setError('❌ Le bac est obligatoire'); 
-      return; 
+    if (!formData.id_bac) {
+      setError('❌ Le bac est obligatoire');
+      return;
     }
-    
-    if (formData.coutTotal < 0) { 
-      setError('❌ Le coût total ne peut pas être négatif'); 
-      return; 
+
+    if (formData.coutUnitaire < 0) {
+      setError('❌ Le coût unitaire ne peut pas être négatif');
+      return;
     }
 
     setError('');
     setLoading(true);
 
     try {
-      // ✅ CALCUL: Coût unitaire = Coût total / Quantité
-      const coutUnitaire = formData.quantite > 0 ? formData.coutTotal / formData.quantite : 0;
-
-      // ✅ ENVOI: cout unitaire au backend (comme avant)
       const payload = {
         reference: formData.reference,
         designation: formData.designation,
@@ -201,11 +197,11 @@ fetch(`${API_URL}/api/bacs`)
         nom_operation: formData.nom_operation,
         quantite: formData.quantite,
         id_bac: formData.id_bac,
-        cout: coutUnitaire, // ✅ Envoie coût UNITAIRE calculé
+        cout: formData.coutUnitaire,
         type: 'ENTREE'
       };
 
-   const response = await fetch(`${API_URL}/api/mouvements/ajouter`, {
+      const response = await fetch(`${API_URL}/api/mouvements/ajouter`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
@@ -230,7 +226,7 @@ fetch(`${API_URL}/api/bacs`)
 
       setFormData({
         reference: '', designation: '', id_operation: null,
-        nom_operation: '', quantite: '', id_bac: null, coutTotal: 0, type: 'ENTREE'
+        nom_operation: '', quantite: '', id_bac: null, coutUnitaire: 0, type: 'ENTREE'
       });
       setProduit(null);
       setOperations([]);
@@ -245,9 +241,8 @@ fetch(`${API_URL}/api/bacs`)
 
   const handleClose = () => { if (typeof onClose === 'function') onClose(); };
 
-  // ✅ CHANGÉ: Affiche coût unitaire CALCULÉ
-  const coutUnitaire = formData.quantite > 0 
-    ? (formData.coutTotal / formData.quantite).toFixed(2) 
+  const coutTotal = formData.quantite > 0 && formData.coutUnitaire > 0
+    ? (formData.coutUnitaire * formData.quantite).toFixed(2)
     : '0.00';
 
   const styles = {
@@ -367,29 +362,29 @@ fetch(`${API_URL}/api/bacs`)
                 onBlur={(e) => e.currentTarget.style.borderColor = '#e1e4e8'} />
             </div>
 
-            {/* ✅ COÛT TOTAL (MODIFIABLE) */}
+            {/* COÛT UNITAIRE (saisi manuellement) */}
             <div style={styles.formGroup}>
-              <label style={styles.label}>💰 Coût TOTAL de cette entrée (DT)</label>
-              <input 
-                type="number" 
+              <label style={styles.label}>💰 Coût unitaire (DT / pièce)</label>
+              <input
+                type="number"
                 step="0.01"
                 min="0"
-                style={styles.input} 
-                value={formData.coutTotal} 
-                onChange={(e) => setFormData({...formData, coutTotal: parseFloat(e.target.value) || 0})}
-                placeholder="Ex: 550.00"
+                style={styles.input}
+                value={formData.coutUnitaire}
+                onChange={(e) => setFormData({...formData, coutUnitaire: parseFloat(e.target.value) || 0})}
+                placeholder="Ex: 5.50"
                 onFocus={(e) => e.currentTarget.style.borderColor = '#1a7f37'}
                 onBlur={(e) => e.currentTarget.style.borderColor = '#e1e4e8'}
               />
               <small style={{ fontSize: '12px', color: '#586069' }}>
-                💡 Saisissez le coût total de toute la quantité
+                💡 Saisissez le coût par pièce
               </small>
-              
-              {/* ✅ AFFICHAGE COÛT UNITAIRE CALCULÉ */}
-              {formData.quantite > 0 && formData.coutTotal > 0 && (
+
+              {/* COÛT TOTAL CALCULÉ AUTOMATIQUEMENT */}
+              {formData.quantite > 0 && formData.coutUnitaire > 0 && (
                 <div style={styles.infoBox}>
-                  <div style={styles.infoLabel}>📊 Coût unitaire calculé:</div>
-                  <div style={styles.infoValue}>{coutUnitaire} DT / pièce</div>
+                  <div style={styles.infoLabel}>📊 Coût total calculé:</div>
+                  <div style={styles.infoValue}>{coutTotal} DT</div>
                 </div>
               )}
             </div>
