@@ -50,3 +50,16 @@ select option {
   background-color: #ffffff !important;
   color: #000000 !important;
 }
+/* Force couleur texte - fix mode sombre */
+body {
+  background-color: #ffffff !important;
+  color: #24292e !important;
+}
+
+* {
+  color: inherit;
+}
+
+table, th, td, tr {
+  color: #24292e !important;
+}
