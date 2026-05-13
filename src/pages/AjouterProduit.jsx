@@ -581,7 +581,27 @@ const response = await fetch(`${API_URL}/api/operations/${operationId}`, {
                 onBlur={(e) => e.currentTarget.style.borderColor = '#e1e4e8'}
               />
             </div>
-
+<div style={styles.formGroup}>
+  <label style={styles.label}>
+    ⚠️ Seuil d'alerte 
+    <span style={{ fontSize: '12px', color: '#586069', fontWeight: '400', marginLeft: '8px' }}>
+      (optionnel — défaut: 10 000)
+    </span>
+  </label>
+  <input
+    type="number"
+    style={styles.input}
+    placeholder="Ex: 5000"
+    value={formData.seuilAlerte}
+    onChange={(e) => setFormData({...formData, seuilAlerte: parseInt(e.target.value) || 10000})}
+    min="1"
+    onFocus={(e) => e.currentTarget.style.borderColor = '#667eea'}
+    onBlur={(e) => e.currentTarget.style.borderColor = '#e1e4e8'}
+  />
+  <small style={{ fontSize: '12px', color: '#586069' }}>
+    💡 Une alerte apparaît quand le stock dépasse ce seuil
+  </small>
+</div>
             {/* COÛT */}
         
 

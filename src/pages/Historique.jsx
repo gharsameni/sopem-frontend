@@ -15,14 +15,10 @@ const Historique = ({ onClose }) => {
   const loadMouvements = async () => {
     setLoading(true);
     try {
-  const response = await fetch(`${API_URL}/api/mouvements`);
-if (!response.ok) throw new Error('Erreur chargement');
-const data = await response.json();
-const dataAvecCout = data.map(m => ({
-  ...m,
-  coutTotal: (m.cout || 0) * (m.quantite || 0)
-}));
-setMouvements(dataAvecCout);
+    const response = await fetch(`${API_URL}/api/mouvements/historique-avec-couts`);
+      if (!response.ok) throw new Error('Erreur chargement');
+      const data = await response.json();
+      setMouvements(data);
     } catch (error) {
       console.error('Erreur:', error);
       toast.error('Erreur lors du chargement de l\'historique');
