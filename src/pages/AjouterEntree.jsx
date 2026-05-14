@@ -127,7 +127,7 @@ const AjouterEntree = ({ onClose, onSuccess }) => {
         return;
       }
 
-      if (!response.ok) throw new Error('Produit non trouvé');
+      if (!response.ok)  setProduitError('Produit non trouvé');
 
       const data = await response.json();
 
