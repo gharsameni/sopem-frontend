@@ -78,7 +78,7 @@ const ListeProduits = ({ onClose }) => {
    * NOUVEAU : Gérer l'activation/désactivation dynamique
    */
   const handleToggleActif = async (produit) => {
-    const action = produit.actif ? 'désactiver' : 'activer';
+const action = produit.actif ? 'desactiver' : 'activer';
     const messageConfirm = produit.actif 
       ? `⚠️ Voulez-vous vraiment désactiver le produit "${produit.designation}" ?\n\nIl ne sera plus visible dans la liste des produits actifs.`
       : `✅ Voulez-vous vraiment activer le produit "${produit.designation}" ?`;

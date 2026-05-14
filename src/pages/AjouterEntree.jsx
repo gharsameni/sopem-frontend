@@ -246,7 +246,7 @@ const AjouterEntree = ({ onClose, onSuccess }) => {
     : '0.00';
 
   const styles = {
-    overlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0, 0, 0, 0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '2rem' },
+    overlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(23, 22, 22, 0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '2rem' },
     modal: { background: '#fff', borderRadius: '16px', width: '100%', maxWidth: '700px', maxHeight: '90vh', overflow: 'auto', boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)' },
     header: { padding: '1.5rem 2rem', borderBottom: '1px solid #e1e4e8', display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
     title: { fontSize: '20px', fontWeight: '600', margin: 0, color: '#24292e' },
@@ -409,6 +409,7 @@ const AjouterEntree = ({ onClose, onSuccess }) => {
         </div>
 
         <div style={styles.footer}>
+          
           <button type="button" style={styles.btnCancel} onClick={handleClose}
             onMouseOver={(e) => e.currentTarget.style.background = '#f6f8fa'}
             onMouseOut={(e) => e.currentTarget.style.background = '#fff'}>
