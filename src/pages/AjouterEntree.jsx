@@ -118,11 +118,29 @@ const AjouterEntree = ({ onClose, onSuccess }) => {
     try {
       const response = await fetch(`${API_URL}/api/produits/byReference/${refBase}`);
 
+      // ✅ Produit désactivé
+      if (response.status === 403) {
+        setProduitError('❌ Ce produit est désactivé — impossible d\'enregistrer une entrée');
+        setProduit(null);
+        setOperations([]);
+        setFormData(prev => ({ ...prev, designation: '', coutUnitaire: 0 }));
+        return;
+      }
+
       if (!response.ok) throw new Error('Produit non trouvé');
 
       const data = await response.json();
-      setProduit(data);
 
+      // ✅ Vérification côté frontend aussi
+      if (!data.actif) {
+        setProduitError('❌ Ce produit est désactivé — impossible d\'enregistrer une entrée');
+        setProduit(null);
+        setOperations([]);
+        setFormData(prev => ({ ...prev, designation: '', coutUnitaire: 0 }));
+        return;
+      }
+
+      setProduit(data);
       setFormData(prev => ({
         ...prev,
         designation: data.designation || '',
@@ -362,7 +380,7 @@ const AjouterEntree = ({ onClose, onSuccess }) => {
                 onBlur={(e) => e.currentTarget.style.borderColor = '#e1e4e8'} />
             </div>
 
-            {/* COÛT UNITAIRE (saisi manuellement) */}
+            {/* COÛT UNITAIRE */}
             <div style={styles.formGroup}>
               <label style={styles.label}>💰 Coût unitaire (DT / pièce)</label>
               <input
@@ -379,8 +397,6 @@ const AjouterEntree = ({ onClose, onSuccess }) => {
               <small style={{ fontSize: '12px', color: '#586069' }}>
                 💡 Saisissez le coût par pièce
               </small>
-
-              {/* COÛT TOTAL CALCULÉ AUTOMATIQUEMENT */}
               {formData.quantite > 0 && formData.coutUnitaire > 0 && (
                 <div style={styles.infoBox}>
                   <div style={styles.infoLabel}>📊 Coût total calculé:</div>
@@ -409,7 +425,6 @@ const AjouterEntree = ({ onClose, onSuccess }) => {
         </div>
 
         <div style={styles.footer}>
-          
           <button type="button" style={styles.btnCancel} onClick={handleClose}
             onMouseOver={(e) => e.currentTarget.style.background = '#f6f8fa'}
             onMouseOut={(e) => e.currentTarget.style.background = '#fff'}>
