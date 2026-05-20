@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import toast from 'react-hot-toast';
 import Historique from './Historique';
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
@@ -10,6 +10,8 @@ const DashboardChefAtelier = ({ user }) => {
     sorties: 0,
     total: 0,
     stockTotal: 0,
+    alertes: 0,
+    alertesDetails: [],
     loading: true
   });
   const [stockParOperation, setStockParOperation] = useState([]);
@@ -19,6 +21,8 @@ const DashboardChefAtelier = ({ user }) => {
   const [produitRecherche, setProduitRecherche] = useState(null);
   const [allMouvements, setAllMouvements] = useState([]);
   const [showHistorique, setShowHistorique] = useState(false);
+  const [showAlertes, setShowAlertes] = useState(false);
+  const [topBacsData, setTopBacsData] = useState([]);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -29,42 +33,58 @@ const DashboardChefAtelier = ({ user }) => {
 
   useEffect(() => {
     loadData();
+    fetchTopBacs();
   }, []);
+
+  const fetchTopBacs = async () => {
+    try {
+      const res = await fetch(`${API_URL}/api/mouvements/top-bacs`);
+      if (res.ok) {
+        const data = await res.json();
+        setTopBacsData(data);
+      }
+    } catch (error) {
+      console.error('Erreur chargement top bacs:', error);
+    }
+  };
 
   const loadData = async () => {
     setKpis(prev => ({ ...prev, loading: true }));
     
     try {
-      // Charger KPIs
-      
-   const [mouvementsRes, totalRes, stockTotalRes, derniersRes] = await Promise.all([
-  fetch(`${API_URL}/api/mouvements/stats/today`),
-  fetch(`${API_URL}/api/mouvements/stats/total-produits`),
-  fetch(`${API_URL}/api/mouvements/stats/stock-total`),
-  fetch(`${API_URL}/api/mouvements/derniers`)
-]);
+      const [mouvementsRes, totalRes, stockTotalRes, derniersRes, alertesRes, alertesDetailsRes] = await Promise.all([
+        fetch(`${API_URL}/api/mouvements/stats/today`),
+        fetch(`${API_URL}/api/mouvements/stats/total-produits`),
+        fetch(`${API_URL}/api/mouvements/stats/stock-total`),
+        fetch(`${API_URL}/api/mouvements/derniers`),
+        fetch(`${API_URL}/api/mouvements/stats/alertes`),
+        fetch(`${API_URL}/api/mouvements/alertes-details`)
+      ]);
 
       const mouvements = await mouvementsRes.json();
       const totalData = await totalRes.json();
       const stockTotal = await stockTotalRes.json();
       const derniers = await derniersRes.json();
+      const alertes = await alertesRes.json();
+      const alertesDetails = await alertesDetailsRes.json();
 
       setKpis({
         entrees: mouvements.entrees || 0,
         sorties: mouvements.sorties || 0,
         total: totalData.total || 0,
         stockTotal: stockTotal.stockTotal || 0,
+        alertes: alertes.alertes || 0,
+        alertesDetails: alertesDetails || [],
         loading: false
       });
 
       setDerniersMovements(derniers.slice(0, 10) || []);
 
-      // Charger tous les mouvements pour calculer stock par opération
-    const allMouvementsRes = await fetch(`${API_URL}/api/mouvements`);
+      const allMouvementsRes = await fetch(`${API_URL}/api/mouvements`);
       const allMouvements = await allMouvementsRes.json();
       setAllMouvements(allMouvements);
 
-      // Calculer stock par opération (global)
+      // Stock par opération
       const operationsMap = {};
       allMouvements.forEach(m => {
         const op = m.nom_operation || 'NON_SPECIFIE';
@@ -86,7 +106,7 @@ const DashboardChefAtelier = ({ user }) => {
 
       setStockParOperation(operations);
 
-      // Calculer top produits
+      // Top produits
       const produitsMap = {};
       allMouvements.forEach(m => {
         const ref = m.reference;
@@ -125,7 +145,6 @@ const DashboardChefAtelier = ({ user }) => {
     const now = new Date();
     const moisData = {};
     
-    // Initialiser les 6 derniers mois
     for (let i = 0; i < 6; i++) {
       const date = new Date();
       date.setMonth(now.getMonth() - (5 - i));
@@ -138,12 +157,10 @@ const DashboardChefAtelier = ({ user }) => {
       };
     }
     
-    // Calculer entrées/sorties
     allMouvements.forEach(mvt => {
       if (!mvt.date) return;
       const date = new Date(mvt.date);
       const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-      
       if (moisData[key]) {
         if (mvt.type === 'ENTREE') {
           moisData[key].entrees += mvt.quantite || 0;
@@ -163,7 +180,7 @@ const DashboardChefAtelier = ({ user }) => {
     }
 
     try {
-   const res = await fetch(`${API_URL}/api/mouvements`);
+      const res = await fetch(`${API_URL}/api/mouvements`);
       if (!res.ok) throw new Error('Erreur chargement');
       
       const allMouvements = await res.json();
@@ -183,19 +200,16 @@ const DashboardChefAtelier = ({ user }) => {
       };
 
       const operationsMap = {};
-      
       filtered.forEach(m => {
         const op = m.nom_operation || 'NON_SPECIFIE';
         if (!operationsMap[op]) {
           operationsMap[op] = { entrees: 0, sorties: 0, stock: 0 };
         }
-        
         if (m.type === 'ENTREE') {
           operationsMap[op].entrees += m.quantite;
         } else {
           operationsMap[op].sorties += m.quantite;
         }
-        
         operationsMap[op].stock = operationsMap[op].entrees - operationsMap[op].sorties;
       });
 
@@ -204,10 +218,7 @@ const DashboardChefAtelier = ({ user }) => {
         stock: operationsMap[nom].stock
       })).sort((a, b) => b.stock - a.stock);
 
-      setProduitRecherche({
-        ...produit,
-        operations
-      });
+      setProduitRecherche({ ...produit, operations });
 
     } catch (err) {
       alert('❌ Erreur: ' + err.message);
@@ -241,6 +252,37 @@ const DashboardChefAtelier = ({ user }) => {
   };
 
   const mouvementsData = getMouvementsParMois();
+
+  // Custom tooltip pour le BarChart Top Bacs
+  const CustomTooltipBacs = ({ active, payload }) => {
+    if (active && payload && payload.length) {
+      const data = payload[0].payload;
+      const coutTotal = data.coutTotal || 0;
+      return (
+        <div style={{
+          background: '#fff',
+          border: '1px solid #bae6fd',
+          borderRadius: '12px',
+          padding: '16px',
+          boxShadow: '0 8px 24px rgba(10, 197, 255, 0.2)'
+        }}>
+          <p style={{ fontWeight: '700', fontSize: '15px', marginBottom: '12px', color: '#0f2942' }}>
+            📦 {data.codeBac}
+          </p>
+          <p style={{ fontSize: '13px', marginBottom: '6px', color: '#64748b' }}>
+            <strong>Produit:</strong> {data.referenceProduit}
+          </p>
+          <p style={{ fontSize: '13px', marginBottom: '6px', color: '#64748b' }}>
+            <strong>Stock:</strong> {data.quantite.toLocaleString()} pcs
+          </p>
+          <p style={{ fontSize: '14px', fontWeight: '700', color: '#0ac5ff', marginTop: '8px' }}>
+            💰 Coût total: {coutTotal.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} DT
+          </p>
+        </div>
+      );
+    }
+    return null;
+  };
 
   const styles = {
     container: {
@@ -352,7 +394,7 @@ const DashboardChefAtelier = ({ user }) => {
     },
     kpiGrid: {
       display: 'grid',
-      gridTemplateColumns: 'repeat(4, 1fr)',
+      gridTemplateColumns: 'repeat(5, 1fr)',
       gap: '1.5rem',
       marginBottom: '2rem',
     },
@@ -400,6 +442,13 @@ const DashboardChefAtelier = ({ user }) => {
       color: '#fff',
       letterSpacing: '-1.5px',
     },
+    kpiValueDanger: {
+      fontSize: '36px',
+      fontWeight: '800',
+      margin: '0',
+      color: '#f85149',
+      letterSpacing: '-1.5px',
+    },
     card: {
       background: '#fff',
       borderRadius: '16px',
@@ -421,6 +470,17 @@ const DashboardChefAtelier = ({ user }) => {
       fontWeight: '700',
       margin: '0',
       color: '#0f2942',
+    },
+    btnLink: {
+      fontSize: '13px',
+      padding: '10px 18px',
+      background: '#f0f9ff',
+      border: '1px solid #bae6fd',
+      borderRadius: '8px',
+      cursor: 'pointer',
+      transition: 'all 0.2s ease',
+      color: '#0f2942',
+      fontWeight: '600',
     },
     searchContainer: {
       display: 'flex',
@@ -592,6 +652,84 @@ const DashboardChefAtelier = ({ user }) => {
       color: '#cf222e',
       fontWeight: '700',
     },
+    alertsList: {
+      display: 'flex',
+      flexDirection: 'column',
+      gap: '14px',
+    },
+    alertItem: {
+      display: 'flex',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      padding: '18px 20px',
+      background: '#fff5f5',
+      border: '1px solid #fecaca',
+      borderRadius: '12px',
+      transition: 'all 0.2s ease',
+    },
+    alertRef: {
+      fontSize: '15px',
+      fontWeight: '700',
+      margin: '0 0 5px 0',
+      color: '#dc2626',
+    },
+    alertLocation: {
+      fontSize: '13px',
+      color: '#991b1b',
+      margin: '0',
+      fontWeight: '500',
+    },
+    alertQuantity: { textAlign: 'right' },
+    alertValue: {
+      fontSize: '26px',
+      fontWeight: '800',
+      margin: '0 0 5px 0',
+      color: '#dc2626',
+    },
+    alertUnit: {
+      fontSize: '12px',
+      color: '#991b1b',
+      margin: '0',
+      fontWeight: '600',
+    },
+    modalOverlay: {
+      position: 'fixed',
+      top: 0, left: 0, right: 0, bottom: 0,
+      background: 'rgba(15, 41, 66, 0.5)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      zIndex: 1000,
+      backdropFilter: 'blur(4px)',
+    },
+    modalContent: {
+      background: '#fff',
+      borderRadius: '16px',
+      width: '90%',
+      maxWidth: '900px',
+      maxHeight: '85vh',
+      display: 'flex',
+      flexDirection: 'column',
+      boxShadow: '0 20px 60px rgba(10, 197, 255, 0.3)',
+    },
+    modalHeader: {
+      padding: '2rem 2.5rem',
+      borderBottom: '2px solid #bae6fd',
+      display: 'flex',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+    },
+    closeBtn: {
+      width: '40px',
+      height: '40px',
+      borderRadius: '10px',
+      background: '#f0f9ff',
+      border: '1px solid #bae6fd',
+      cursor: 'pointer',
+      fontSize: '20px',
+      color: '#0f2942',
+      transition: 'all 0.2s ease',
+    },
   };
 
   const dataToDisplay = produitRecherche ? produitRecherche.operations : stockParOperation.slice(0, 6);
@@ -611,42 +749,23 @@ const DashboardChefAtelier = ({ user }) => {
           </div>
         </div>
         <div style={styles.headerActions}>
-          <button type="button" style={styles.btnActualiser} onClick={loadData}
-            onMouseOver={(e) => {
-              e.currentTarget.style.background = '#f0f9ff';
-              e.currentTarget.style.borderColor = '#0ac5ff';
-            }}
-            onMouseOut={(e) => {
-              e.currentTarget.style.background = '#fff';
-              e.currentTarget.style.borderColor = '#bae6fd';
-            }}>
+          <button type="button" style={styles.btnActualiser}
+            onClick={() => { loadData(); fetchTopBacs(); }}
+            onMouseOver={(e) => { e.currentTarget.style.background = '#f0f9ff'; e.currentTarget.style.borderColor = '#0ac5ff'; }}
+            onMouseOut={(e) => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.borderColor = '#bae6fd'; }}>
             <span>🔄</span> Actualiser
           </button>
           
-          <button 
-            type="button" 
-            style={styles.btnActualiser} 
+          <button type="button" style={styles.btnActualiser}
             onClick={() => setShowHistorique(true)}
-            onMouseOver={(e) => {
-              e.currentTarget.style.background = '#f0f9ff';
-              e.currentTarget.style.borderColor = '#0ac5ff';
-            }}
-            onMouseOut={(e) => {
-              e.currentTarget.style.background = '#fff';
-              e.currentTarget.style.borderColor = '#bae6fd';
-            }}>
+            onMouseOver={(e) => { e.currentTarget.style.background = '#f0f9ff'; e.currentTarget.style.borderColor = '#0ac5ff'; }}
+            onMouseOut={(e) => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.borderColor = '#bae6fd'; }}>
             <span>📋</span> Historique
           </button>
           
           <button onClick={handleLogout} style={styles.logoutBtn} title="Déconnexion"
-            onMouseOver={(e) => {
-              e.currentTarget.style.background = '#ffebe9';
-              e.currentTarget.style.borderColor = '#fecaca';
-            }}
-            onMouseOut={(e) => {
-              e.currentTarget.style.background = '#f0f9ff';
-              e.currentTarget.style.borderColor = '#bae6fd';
-            }}>
+            onMouseOver={(e) => { e.currentTarget.style.background = '#ffebe9'; e.currentTarget.style.borderColor = '#fecaca'; }}
+            onMouseOut={(e) => { e.currentTarget.style.background = '#f0f9ff'; e.currentTarget.style.borderColor = '#bae6fd'; }}>
             <span style={{ fontSize: '16px', fontWeight: 'bold', color: '#dc2626' }}>⏻</span>
           </button>
           <div style={styles.userAvatar}
@@ -658,120 +777,144 @@ const DashboardChefAtelier = ({ user }) => {
       </div>
 
       <div style={styles.mainWrapper}>
-        {/* KPIs */}
+
+        {/* ── KPIs (5 cartes avec alertes) ────────────────────────────────── */}
         <div style={styles.kpiGrid}>
           <div style={styles.kpiCard}
-            onMouseOver={(e) => {
-              e.currentTarget.style.transform = 'translateY(-4px)';
-              e.currentTarget.style.boxShadow = '0 12px 28px rgba(10, 197, 255, 0.15)';
-            }}
-            onMouseOut={(e) => {
-              e.currentTarget.style.transform = 'translateY(0)';
-              e.currentTarget.style.boxShadow = '0 2px 8px rgba(10, 197, 255, 0.06)';
-            }}>
+            onMouseOver={(e) => { e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.boxShadow = '0 12px 28px rgba(10, 197, 255, 0.15)'; }}
+            onMouseOut={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 2px 8px rgba(10, 197, 255, 0.06)'; }}>
             <p style={styles.kpiLabel}>Entrées aujourd'hui</p>
             <p style={styles.kpiValue}>{kpis.loading ? '...' : kpis.entrees}</p>
           </div>
 
           <div style={styles.kpiCard}
-            onMouseOver={(e) => {
-              e.currentTarget.style.transform = 'translateY(-4px)';
-              e.currentTarget.style.boxShadow = '0 12px 28px rgba(10, 197, 255, 0.15)';
-            }}
-            onMouseOut={(e) => {
-              e.currentTarget.style.transform = 'translateY(0)';
-              e.currentTarget.style.boxShadow = '0 2px 8px rgba(10, 197, 255, 0.06)';
-            }}>
+            onMouseOver={(e) => { e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.boxShadow = '0 12px 28px rgba(10, 197, 255, 0.15)'; }}
+            onMouseOut={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 2px 8px rgba(10, 197, 255, 0.06)'; }}>
             <p style={styles.kpiLabel}>Sorties aujourd'hui</p>
             <p style={styles.kpiValue}>{kpis.loading ? '...' : kpis.sorties}</p>
           </div>
 
           <div style={styles.kpiCard}
-            onMouseOver={(e) => {
-              e.currentTarget.style.transform = 'translateY(-4px)';
-              e.currentTarget.style.boxShadow = '0 12px 28px rgba(10, 197, 255, 0.15)';
-            }}
-            onMouseOut={(e) => {
-              e.currentTarget.style.transform = 'translateY(0)';
-              e.currentTarget.style.boxShadow = '0 2px 8px rgba(10, 197, 255, 0.06)';
-            }}>
+            onMouseOver={(e) => { e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.boxShadow = '0 12px 28px rgba(10, 197, 255, 0.15)'; }}
+            onMouseOut={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 2px 8px rgba(10, 197, 255, 0.06)'; }}>
+            <p style={styles.kpiLabel}>Alertes stock</p>
+            <p style={styles.kpiValueDanger}>{kpis.loading ? '...' : kpis.alertes}</p>
+          </div>
+
+          <div style={styles.kpiCard}
+            onMouseOver={(e) => { e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.boxShadow = '0 12px 28px rgba(10, 197, 255, 0.15)'; }}
+            onMouseOut={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 2px 8px rgba(10, 197, 255, 0.06)'; }}>
             <p style={styles.kpiLabel}>Produits Semi-Finis</p>
             <p style={styles.kpiValue}>{kpis.loading ? '...' : kpis.total}</p>
           </div>
 
           <div style={{...styles.kpiCard, ...styles.kpiCardPrimary}}
-            onMouseOver={(e) => {
-              e.currentTarget.style.transform = 'translateY(-4px)';
-              e.currentTarget.style.boxShadow = '0 16px 36px rgba(10, 197, 255, 0.45)';
-            }}
-            onMouseOut={(e) => {
-              e.currentTarget.style.transform = 'translateY(0)';
-              e.currentTarget.style.boxShadow = '0 8px 24px rgba(10, 197, 255, 0.3)';
-            }}>
+            onMouseOver={(e) => { e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.boxShadow = '0 16px 36px rgba(10, 197, 255, 0.45)'; }}
+            onMouseOut={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 8px 24px rgba(10, 197, 255, 0.3)'; }}>
             <p style={styles.kpiLabelPrimary}>Stock Total</p>
-            <p style={styles.kpiValuePrimary}>
-              {kpis.loading ? '...' : kpis.stockTotal.toLocaleString()}
-            </p>
+            <p style={styles.kpiValuePrimary}>{kpis.loading ? '...' : kpis.stockTotal.toLocaleString()}</p>
           </div>
         </div>
 
-        {/* GRAPHIQUE ENTRÉES VS SORTIES */}
+        {/* ── GRAPHIQUE ENTRÉES VS SORTIES ─────────────────────────────────── */}
         <div style={styles.card}>
           <div style={styles.cardHeader}>
             <h2 style={styles.cardTitle}>📈 Entrées vs Sorties (6 mois)</h2>
           </div>
           {mouvementsData.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '3rem', color: '#64748b' }}>
-              Aucune donnée disponible
-            </div>
+            <div style={{ textAlign: 'center', padding: '3rem', color: '#64748b' }}>Aucune donnée disponible</div>
           ) : (
             <ResponsiveContainer width="100%" height={320}>
               <LineChart data={mouvementsData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#bae6fd" />
-                <XAxis 
-                  dataKey="mois" 
-                  style={{ fontSize: '12px', fontWeight: '600' }} 
-                  stroke="#64748b" 
-                />
-                <YAxis 
-                  style={{ fontSize: '12px', fontWeight: '600' }} 
-                  stroke="#64748b"
-                  tickFormatter={(value) => value.toLocaleString()}
-                />
-                <Tooltip 
-                  contentStyle={{ 
-                    background: '#fff', 
-                    border: '1px solid #bae6fd', 
-                    borderRadius: '8px',
-                    boxShadow: '0 4px 12px rgba(10, 197, 255, 0.15)'
-                  }}
-                  formatter={(value) => value.toLocaleString()}
+                <XAxis dataKey="mois" style={{ fontSize: '12px', fontWeight: '600' }} stroke="#64748b" />
+                <YAxis style={{ fontSize: '12px', fontWeight: '600' }} stroke="#64748b" tickFormatter={(v) => v.toLocaleString()} />
+                <Tooltip
+                  contentStyle={{ background: '#fff', border: '1px solid #bae6fd', borderRadius: '8px', boxShadow: '0 4px 12px rgba(10,197,255,0.15)' }}
+                  formatter={(v) => v.toLocaleString()}
                 />
                 <Legend wrapperStyle={{ paddingTop: '20px' }} />
-                <Line 
-                  type="monotone" 
-                  dataKey="entrees" 
-                  stroke="#1a7f37" 
-                  strokeWidth={3}
-                  name="Entrées"
-                  dot={{ fill: '#1a7f37', r: 5 }}
-                  activeDot={{ r: 7 }}
-                />
-                <Line 
-                  type="monotone" 
-                  dataKey="sorties" 
-                  stroke="#cf222e" 
-                  strokeWidth={3}
-                  name="Sorties"
-                  dot={{ fill: '#cf222e', r: 5 }}
-                  activeDot={{ r: 7 }}
-                />
+                <Line type="monotone" dataKey="entrees" stroke="#1a7f37" strokeWidth={3} name="Entrées" dot={{ fill: '#1a7f37', r: 5 }} activeDot={{ r: 7 }} />
+                <Line type="monotone" dataKey="sorties" stroke="#cf222e" strokeWidth={3} name="Sorties" dot={{ fill: '#cf222e', r: 5 }} activeDot={{ r: 7 }} />
               </LineChart>
             </ResponsiveContainer>
           )}
         </div>
 
-        {/* Stock par Opération avec Recherche */}
+        {/* ── TOP 10 BACS ──────────────────────────────────────────────────── */}
+        <div style={styles.card}>
+          <div style={styles.cardHeader}>
+            <h2 style={styles.cardTitle}>📦 Top 10 Bacs par Stock</h2>
+          </div>
+          {topBacsData.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '3rem', color: '#64748b' }}>Aucune donnée disponible</div>
+          ) : (
+            <ResponsiveContainer width="100%" height={320}>
+              <BarChart data={topBacsData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#bae6fd" />
+                <XAxis dataKey="codeBac" style={{ fontSize: '13px', fontWeight: '600' }} stroke="#64748b" />
+                <YAxis style={{ fontSize: '12px', fontWeight: '600' }} stroke="#64748b" tickFormatter={(v) => v.toLocaleString()} />
+                <Tooltip content={<CustomTooltipBacs />} />
+                <defs>
+                  <linearGradient id="colorGradientChef" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#0ac5ff" stopOpacity={1} />
+                    <stop offset="100%" stopColor="#0f2942" stopOpacity={1} />
+                  </linearGradient>
+                </defs>
+                <Bar
+                  dataKey="quantite"
+                  fill="url(#colorGradientChef)"
+                  radius={[8, 8, 0, 0]}
+                  label={{
+                    position: 'top',
+                    style: { fontSize: '13px', fontWeight: '700', fill: '#0ac5ff' },
+                    formatter: (v) => v.toLocaleString(),
+                  }}
+                />
+              </BarChart>
+            </ResponsiveContainer>
+          )}
+        </div>
+
+        {/* ── ALERTES STOCK ────────────────────────────────────────────────── */}
+        <div style={styles.card}>
+          <div style={styles.cardHeader}>
+            <h2 style={styles.cardTitle}>⚠️ Alertes Stock ≥ 10,000 pcs</h2>
+            <button
+              type="button"
+              style={styles.btnLink}
+              onClick={() => setShowAlertes(true)}
+              onMouseOver={(e) => { e.currentTarget.style.background = '#bae6fd'; e.currentTarget.style.borderColor = '#7dd3fc'; }}
+              onMouseOut={(e) => { e.currentTarget.style.background = '#f0f9ff'; e.currentTarget.style.borderColor = '#bae6fd'; }}
+            >
+              Tout voir →
+            </button>
+          </div>
+          <div style={styles.alertsList}>
+            {kpis.loading ? (
+              <div style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>⏳ Chargement des alertes...</div>
+            ) : kpis.alertesDetails.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '2rem', color: '#1a7f37' }}>✅ Aucune alerte stock - Tout est normal!</div>
+            ) : (
+              kpis.alertesDetails.slice(0, 3).map((alert, i) => (
+                <div key={i} style={styles.alertItem}
+                  onMouseOver={(e) => { e.currentTarget.style.background = '#fef2f2'; e.currentTarget.style.transform = 'translateX(4px)'; }}
+                  onMouseOut={(e) => { e.currentTarget.style.background = '#fff5f5'; e.currentTarget.style.transform = 'translateX(0)'; }}>
+                  <div>
+                    <p style={styles.alertRef}>Ref: {alert.reference}</p>
+                    <p style={styles.alertLocation}>📍 {alert.emplacement}</p>
+                  </div>
+                  <div style={styles.alertQuantity}>
+                    <p style={styles.alertValue}>{alert.stockActuel.toLocaleString()}</p>
+                    <p style={styles.alertUnit}>pièces</p>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+
+        {/* ── STOCK PAR OPÉRATION AVEC RECHERCHE ───────────────────────────── */}
         <div style={styles.card}>
           <div style={styles.cardHeader}>
             <h2 style={styles.cardTitle}>
@@ -790,27 +933,15 @@ const DashboardChefAtelier = ({ user }) => {
               onFocus={(e) => e.target.style.borderColor = '#0ac5ff'}
               onBlur={(e) => e.target.style.borderColor = '#bae6fd'}
             />
-            <button
-              onClick={handleRechercheSpecifique}
-              style={styles.btnSearch}
+            <button onClick={handleRechercheSpecifique} style={styles.btnSearch}
               onMouseOver={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
-              onMouseOut={(e) => e.currentTarget.style.transform = 'translateY(0)'}
-            >
+              onMouseOut={(e) => e.currentTarget.style.transform = 'translateY(0)'}>
               🔍 Rechercher
             </button>
             {produitRecherche && (
-              <button
-                onClick={resetRecherche}
-                style={styles.btnReset}
-                onMouseOver={(e) => {
-                  e.currentTarget.style.background = '#f0f9ff';
-                  e.currentTarget.style.borderColor = '#7dd3fc';
-                }}
-                onMouseOut={(e) => {
-                  e.currentTarget.style.background = '#fff';
-                  e.currentTarget.style.borderColor = '#bae6fd';
-                }}
-              >
+              <button onClick={resetRecherche} style={styles.btnReset}
+                onMouseOver={(e) => { e.currentTarget.style.background = '#f0f9ff'; e.currentTarget.style.borderColor = '#7dd3fc'; }}
+                onMouseOut={(e) => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.borderColor = '#bae6fd'; }}>
                 ✕ Réinitialiser
               </button>
             )}
@@ -825,13 +956,10 @@ const DashboardChefAtelier = ({ user }) => {
 
           <div style={styles.chartContainer}>
             {dataToDisplay.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>
-                Aucune donnée disponible
-              </div>
+              <div style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>Aucune donnée disponible</div>
             ) : (
               dataToDisplay.map((op, index) => {
                 const percentage = maxStock > 0 ? (op.stock / maxStock) * 100 : 0;
-                
                 return (
                   <div key={index} style={styles.barItem}>
                     <div style={styles.barLabel}>{op.nom}</div>
@@ -847,9 +975,8 @@ const DashboardChefAtelier = ({ user }) => {
           </div>
         </div>
 
-        {/* Grille: Top 10 + Derniers Mouvements */}
+        {/* ── GRILLE: Top 10 Produits + Derniers Mouvements ────────────────── */}
         <div style={styles.contentGrid}>
-          {/* Top 10 Produits */}
           <div style={styles.card}>
             <div style={styles.cardHeader}>
               <h2 style={styles.cardTitle}>🏆 Top 10 Produits en Stock</h2>
@@ -884,7 +1011,6 @@ const DashboardChefAtelier = ({ user }) => {
             </div>
           </div>
 
-          {/* Derniers Mouvements */}
           <div style={styles.card}>
             <div style={styles.cardHeader}>
               <h2 style={styles.cardTitle}>📋 Derniers Mouvements</h2>
@@ -915,10 +1041,7 @@ const DashboardChefAtelier = ({ user }) => {
                       <td style={styles.td}>{mvt.designation}</td>
                       <td style={styles.td}>{mvt.nom_operation || '-'}</td>
                       <td style={styles.td}>{mvt.bac?.code || '-'}</td>
-                      <td style={{
-                        ...styles.tdRight,
-                        color: mvt.type === 'ENTREE' ? '#1a7f37' : '#cf222e'
-                      }}>
+                      <td style={{ ...styles.tdRight, color: mvt.type === 'ENTREE' ? '#1a7f37' : '#cf222e' }}>
                         {mvt.type === 'ENTREE' ? '+' : '-'}{mvt.quantite.toLocaleString()}
                       </td>
                     </tr>
@@ -928,13 +1051,54 @@ const DashboardChefAtelier = ({ user }) => {
             </div>
           </div>
         </div>
+
       </div>
-      
-      {/* MODAL HISTORIQUE */}
-      {showHistorique && (
-        <Historique 
-          onClose={() => setShowHistorique(false)} 
-        />
+
+      {/* ── MODAL HISTORIQUE ─────────────────────────────────────────────── */}
+      {showHistorique && <Historique onClose={() => setShowHistorique(false)} />}
+
+      {/* ── MODAL TOUTES LES ALERTES ─────────────────────────────────────── */}
+      {showAlertes && (
+        <div style={styles.modalOverlay} onClick={() => setShowAlertes(false)}>
+          <div style={styles.modalContent} onClick={(e) => e.stopPropagation()}>
+            <div style={styles.modalHeader}>
+              <h2 style={{ fontSize: '22px', fontWeight: '700', margin: 0, color: '#dc2626' }}>
+                ⚠️ Toutes les Alertes Stock
+              </h2>
+              <button
+                onClick={() => setShowAlertes(false)}
+                style={styles.closeBtn}
+                onMouseOver={(e) => { e.currentTarget.style.background = '#ffebe9'; e.currentTarget.style.borderColor = '#fecaca'; }}
+                onMouseOut={(e) => { e.currentTarget.style.background = '#f0f9ff'; e.currentTarget.style.borderColor = '#bae6fd'; }}
+              >✕</button>
+            </div>
+            <div style={{ flex: 1, overflow: 'auto', padding: '2rem 2.5rem' }}>
+              {kpis.alertesDetails.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '3rem', color: '#1a7f37' }}>
+                  ✅ Aucune alerte stock - Tout est normal!
+                </div>
+              ) : (
+                <div style={styles.alertsList}>
+                  {kpis.alertesDetails.map((alert, i) => (
+                    <div key={i} style={styles.alertItem}
+                      onMouseOver={(e) => { e.currentTarget.style.background = '#fef2f2'; e.currentTarget.style.transform = 'translateX(4px)'; }}
+                      onMouseOut={(e) => { e.currentTarget.style.background = '#fff5f5'; e.currentTarget.style.transform = 'translateX(0)'; }}>
+                      <div>
+                        <p style={styles.alertRef}>Ref: {alert.reference}</p>
+                        <p style={{ ...styles.alertLocation, marginTop: '5px' }}>{alert.designation}</p>
+                        <p style={styles.alertLocation}>📍 {alert.emplacement}</p>
+                      </div>
+                      <div style={styles.alertQuantity}>
+                        <p style={styles.alertValue}>{alert.stockActuel.toLocaleString()}</p>
+                        <p style={styles.alertUnit}>pièces</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
