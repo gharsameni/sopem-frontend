@@ -34,7 +34,10 @@ const response = await fetch(`${API_URL}/api/auth/login`, {
         throw new Error(data.error || 'Email ou mot de passe incorrect');
       }
 
-      localStorage.setItem('user', JSON.stringify(data));
+localStorage.setItem('user', JSON.stringify(data));
+localStorage.setItem('token', data.token);
+localStorage.setItem('role', data.role);
+      
       
       toast.success(`Bienvenue ${data.nom}! 👋`, {
         duration: 2000,

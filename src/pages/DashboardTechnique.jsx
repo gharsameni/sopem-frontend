@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import toast from 'react-hot-toast';
 import Historique from './Historique';
 import GestionUtilisateurs from './GestionUtilisateurs';
@@ -24,6 +24,8 @@ const DashboardTechnique = ({ user }) => {
 
   const [allMouvements, setAllMouvements] = useState([]);
 
+  const [topBacsData, setTopBacsData] = useState([]);
+
   const [kpis, setKpis] = useState({
     entrees: 0,
     sorties: 0,
@@ -45,7 +47,20 @@ const DashboardTechnique = ({ user }) => {
   useEffect(() => {
     fetchKPIs();
     fetchAllMouvements();
+    fetchTopBacs();
   }, []);
+
+  const fetchTopBacs = async () => {
+    try {
+      const res = await fetch(`${API_URL}/api/mouvements/top-bacs`);
+      if (res.ok) {
+        const data = await res.json();
+        setTopBacsData(data);
+      }
+    } catch (error) {
+      console.error('Erreur chargement top bacs:', error);
+    }
+  };
 
   const fetchKPIs = async () => {
     setKpis(prev => ({ ...prev, loading: true }));
@@ -108,6 +123,7 @@ const res = await fetch(`${API_URL}/api/mouvements`);
         sorties: 0
       };
     }
+         
     
     // Calculer entrées/sorties
     allMouvements.forEach(mvt => {
@@ -126,6 +142,38 @@ const res = await fetch(`${API_URL}/api/mouvements`);
     
     return Object.values(moisData);
   };
+
+  // ── custom tooltip identique au magasinier ───────────────────────────────
+  const CustomTooltipBacs = ({ active, payload }) => {
+    if (active && payload && payload.length) {
+      const data = payload[0].payload;
+      const coutTotal = data.coutTotal || 0;
+      return (
+        <div style={{
+          background: '#fff',
+          border: '1px solid #e1e4e8',
+          borderRadius: '12px',
+          padding: '16px',
+          boxShadow: '0 8px 24px rgba(0, 0, 0, 0.1)',
+        }}>
+          <p style={{ fontWeight: '700', fontSize: '15px', marginBottom: '12px', color: '#24292e' }}>
+            📦 {data.codeBac}
+          </p>
+          <p style={{ fontSize: '13px', marginBottom: '6px', color: '#6e7681' }}>
+            <strong>Produit:</strong> {data.referenceProduit}
+          </p>
+          <p style={{ fontSize: '13px', marginBottom: '6px', color: '#6e7681' }}>
+            <strong>Stock:</strong> {data.quantite.toLocaleString()} pcs
+          </p>
+          <p style={{ fontSize: '14px', fontWeight: '700', color: '#0969da', marginTop: '8px' }}>
+            💰 Coût total: {coutTotal.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} DT
+          </p>
+        </div>
+      );
+    }
+    return null;
+  };
+  // ─────────────────────────────────────────────────────────────────────────
 
   const handleRechercheSpecifique = async () => {
     if (!referenceRecherche.trim()) {
@@ -510,7 +558,7 @@ const res = await fetch(`${API_URL}/api/mouvements`);
           </div>
         </div>
         <div style={styles.headerActions}>
-          <button type="button" style={styles.btnActualiser} onClick={() => { fetchKPIs(); fetchAllMouvements(); }}
+          <button type="button" style={styles.btnActualiser} onClick={() => { fetchKPIs(); fetchAllMouvements(); fetchTopBacs(); }}
             onMouseOver={(e) => { e.currentTarget.style.background = '#f6f8fa'; e.currentTarget.style.borderColor = '#0969da'; }}
             onMouseOut={(e) => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.borderColor = '#e1e4e8'; }}>
             <span>🔄</span> Actualiser
@@ -698,6 +746,52 @@ const res = await fetch(`${API_URL}/api/mouvements`);
                 </ResponsiveContainer>
               )}
             </div>
+
+            {/* ── NEW: TOP 10 BACS ───────────────────────────────────────────── */}
+            <div style={styles.card}>
+              <div style={styles.cardHeader}>
+                <h2 style={styles.cardTitle}>📦 Top 10 Bacs par Stock</h2>
+              </div>
+              {topBacsData.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '3rem', color: '#6e7681' }}>
+                  Aucune donnée disponible
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height={320}>
+                  <BarChart data={topBacsData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#bae6fd" />
+                    <XAxis
+                      dataKey="codeBac"
+                      style={{ fontSize: '13px', fontWeight: '600' }}
+                      stroke="#64748b"
+                    />
+                    <YAxis
+                      style={{ fontSize: '12px', fontWeight: '600' }}
+                      stroke="#64748b"
+                      tickFormatter={(value) => value.toLocaleString()}
+                    />
+                    <Tooltip content={<CustomTooltipBacs />} />
+                    <defs>
+                      <linearGradient id="colorGradient" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#0ac5ff" stopOpacity={1} />
+                        <stop offset="100%" stopColor="#0f2942" stopOpacity={1} />
+                      </linearGradient>
+                    </defs>
+                    <Bar
+                      dataKey="quantite"
+                      fill="url(#colorGradient)"
+                      radius={[8, 8, 0, 0]}
+                      label={{
+                        position: 'top',
+                        style: { fontSize: '13px', fontWeight: '700', fill: '#0ac5ff' },
+                        formatter: (value) => value.toLocaleString(),
+                      }}
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
+            </div>
+            {/* ────────────────────────────────────────────────────────────────── */}
 
             <div style={styles.card}>
               <div style={styles.cardHeader}>

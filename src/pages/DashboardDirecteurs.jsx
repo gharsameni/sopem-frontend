@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import toast from 'react-hot-toast';
 import Historique from './Historique';
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
@@ -19,6 +19,10 @@ const DashboardDirecteurs = ({ user }) => {
   const [loadingStockProduits, setLoadingStockProduits] = useState(false);
 
   const [allMouvements, setAllMouvements] = useState([]);
+
+  // ── top-10 bacs ──────────────────────────────────────────────────────────
+  const [topBacsData, setTopBacsData] = useState([]);
+  // ─────────────────────────────────────────────────────────────────────────
 
   const [kpis, setKpis] = useState({
     entrees: 0,
@@ -41,6 +45,7 @@ const DashboardDirecteurs = ({ user }) => {
   useEffect(() => {
     fetchKPIs();
     fetchAllMouvements();
+    fetchTopBacs();
   }, []);
 
   const fetchKPIs = async () => {
@@ -87,6 +92,51 @@ const DashboardDirecteurs = ({ user }) => {
       console.error('Erreur chargement mouvements:', error);
     }
   };
+
+  // ── fetch top bacs depuis l'API (identique au magasinier) ────────────────
+  const fetchTopBacs = async () => {
+    try {
+      const res = await fetch(`${API_URL}/api/mouvements/top-bacs`);
+      if (res.ok) {
+        const data = await res.json();
+        setTopBacsData(data);
+      }
+    } catch (error) {
+      console.error('Erreur chargement top bacs:', error);
+    }
+  };
+
+  // ── custom tooltip identique au magasinier ───────────────────────────────
+  const CustomTooltipBacs = ({ active, payload }) => {
+    if (active && payload && payload.length) {
+      const data = payload[0].payload;
+      const coutTotal = data.coutTotal || 0;
+      return (
+        <div style={{
+          background: '#fff',
+          border: '1px solid #bae6fd',
+          borderRadius: '12px',
+          padding: '16px',
+          boxShadow: '0 8px 24px rgba(10, 197, 255, 0.2)',
+        }}>
+          <p style={{ fontWeight: '700', fontSize: '15px', marginBottom: '12px', color: '#0f2942' }}>
+            📦 {data.codeBac}
+          </p>
+          <p style={{ fontSize: '13px', marginBottom: '6px', color: '#64748b' }}>
+            <strong>Produit:</strong> {data.referenceProduit}
+          </p>
+          <p style={{ fontSize: '13px', marginBottom: '6px', color: '#64748b' }}>
+            <strong>Stock:</strong> {data.quantite.toLocaleString()} pcs
+          </p>
+          <p style={{ fontSize: '14px', fontWeight: '700', color: '#0ac5ff', marginTop: '8px' }}>
+            💰 Coût total: {coutTotal.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} DT
+          </p>
+        </div>
+      );
+    }
+    return null;
+  };
+  // ─────────────────────────────────────────────────────────────────────────
 
   const getMouvementsParMois = () => {
     const now = new Date();
@@ -250,7 +300,6 @@ const res = await fetch(`${API_URL}/api/mouvements`);
   };
 
   const getRoleColor = () => {
-    // Couleurs bleues SOPEM uniformes pour tous les rôles
     return { start: '#0ac5ff', end: '#0f2942' };
   };
 
@@ -574,7 +623,7 @@ const res = await fetch(`${API_URL}/api/mouvements`);
           </div>
         </div>
         <div style={styles.headerActions}>
-          <button type="button" style={styles.btnActualiser} onClick={() => { fetchKPIs(); fetchAllMouvements(); }}
+          <button type="button" style={styles.btnActualiser} onClick={() => { fetchKPIs(); fetchAllMouvements(); fetchTopBacs(); }}
             onMouseOver={(e) => { e.currentTarget.style.background = '#f0f9ff'; e.currentTarget.style.borderColor = roleColor.start; }}
             onMouseOut={(e) => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.borderColor = '#bae6fd'; }}>
             <span>🔄</span> Actualiser
@@ -658,6 +707,7 @@ const res = await fetch(`${API_URL}/api/mouvements`);
           </div>
 
           <div style={styles.mainContent}>
+            {/* KPIs */}
             <div style={styles.kpiGrid}>
               <div style={styles.kpiCard}
                 onMouseOver={(e) => { e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.boxShadow = '0 12px 28px rgba(10, 197, 255, 0.15)'; }}
@@ -747,6 +797,53 @@ const res = await fetch(`${API_URL}/api/mouvements`);
               )}
             </div>
 
+            {/* ── TOP 10 BACS ──────────────────────────────────────────────────── */}
+            <div style={styles.card}>
+              <div style={styles.cardHeader}>
+                <h2 style={styles.cardTitle}>📦 Top 10 Bacs par Stock</h2>
+              </div>
+              {topBacsData.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '3rem', color: '#64748b' }}>
+                  Aucune donnée disponible
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height={320}>
+                  <BarChart data={topBacsData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#bae6fd" />
+                    <XAxis
+                      dataKey="codeBac"
+                      style={{ fontSize: '13px', fontWeight: '600' }}
+                      stroke="#64748b"
+                    />
+                    <YAxis
+                      style={{ fontSize: '12px', fontWeight: '600' }}
+                      stroke="#64748b"
+                      tickFormatter={(value) => value.toLocaleString()}
+                    />
+                    <Tooltip content={<CustomTooltipBacs />} />
+                    <defs>
+                      <linearGradient id="colorGradientDir" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#0ac5ff" stopOpacity={1} />
+                        <stop offset="100%" stopColor="#0f2942" stopOpacity={1} />
+                      </linearGradient>
+                    </defs>
+                    <Bar
+                      dataKey="quantite"
+                      fill="url(#colorGradientDir)"
+                      radius={[8, 8, 0, 0]}
+                      label={{
+                        position: 'top',
+                        style: { fontSize: '13px', fontWeight: '700', fill: '#0ac5ff' },
+                        formatter: (value) => value.toLocaleString(),
+                      }}
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
+            </div>
+            {/* ─────────────────────────────────────────────────────────────────── */}
+
+            {/* ALERTES */}
             <div style={styles.card}>
               <div style={styles.cardHeader}>
                 <h2 style={styles.cardTitle}>⚠️ Alertes Stock Critique</h2>
@@ -780,6 +877,7 @@ const res = await fetch(`${API_URL}/api/mouvements`);
               </div>
             </div>
 
+            {/* DERNIERS MOUVEMENTS */}
             <div style={styles.card}>
               <div style={styles.cardHeader}>
                 <h2 style={styles.cardTitle}>📊 Derniers Mouvements</h2>
@@ -1001,7 +1099,7 @@ const res = await fetch(`${API_URL}/api/mouvements`);
                 <div style={{ fontSize: '28px', fontWeight: '800', color: roleColor.start }}>{stockProduits.reduce((sum, p) => sum + p.stock, 0).toLocaleString()}</div>
               </div>
               <div style={{ background: '#fff5f5', padding: '1.25rem', borderRadius: '12px', border: '2px solid #fecaca', textAlign: 'center' }}>
-                <div style={{ fontSize: '12px', color: '#991b1b', fontWeight: '700', textTransform: 'uppercase', marginBottom: '8px' }}>Alertes (&gt 10000)</div>
+                <div style={{ fontSize: '12px', color: '#991b1b', fontWeight: '700', textTransform: 'uppercase', marginBottom: '8px' }}>Alertes (&gt; 10000)</div>
                 <div style={{ fontSize: '28px', fontWeight: '800', color: '#dc2626' }}>{stockProduits.filter(p => p.stock > 10000).length}</div>
               </div>
             </div>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell } from 'recharts';
 import toast from 'react-hot-toast';
 import AjouterProduit from './AjouterProduit';
 import ListeProduits from './ListeProduits';
@@ -109,6 +109,40 @@ const DashboardMagasinier = ({ user }) => {
       setKpis(prev => ({ ...prev, loading: false }));
     }
   };
+
+  // ── Entrées vs Sorties par mois (6 derniers mois) ────────────────────────
+  const getMouvementsParMois = () => {
+    const now = new Date();
+    const moisData = {};
+
+    for (let i = 0; i < 6; i++) {
+      const date = new Date();
+      date.setMonth(now.getMonth() - (5 - i));
+      const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      const moisNom = date.toLocaleDateString('fr-FR', { month: 'short' });
+      moisData[key] = {
+        mois: moisNom.charAt(0).toUpperCase() + moisNom.slice(1),
+        entrees: 0,
+        sorties: 0
+      };
+    }
+
+    allMouvements.forEach(mvt => {
+      if (!mvt.date) return;
+      const date = new Date(mvt.date);
+      const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      if (moisData[key]) {
+        if (mvt.type === 'ENTREE') {
+          moisData[key].entrees += mvt.quantite || 0;
+        } else if (mvt.type === 'SORTIE') {
+          moisData[key].sorties += mvt.quantite || 0;
+        }
+      }
+    });
+
+    return Object.values(moisData);
+  };
+  // ─────────────────────────────────────────────────────────────────────────
 
   const handleOpenImprimer = async () => {
     setShowImprimerModal(true);
@@ -300,6 +334,8 @@ const res = await fetch(`${API_URL}/api/mouvements`);
       window.location.reload();
     }
   };
+
+  const mouvementsData = getMouvementsParMois();
 
   const styles = {
     container: {
@@ -764,6 +800,63 @@ const CustomTooltip = ({ active, payload }) => {
                 <p style={styles.kpiValuePrimary}>{kpis.loading ? '...' : kpis.stockTotal.toLocaleString()}</p>
               </div>
             </div>
+
+            {/* ── GRAPHIQUE ENTRÉES VS SORTIES (6 mois) ─────────────────────── */}
+            <div style={styles.card}>
+              <div style={styles.cardHeader}>
+                <h2 style={styles.cardTitle}>📈 Entrées vs Sorties (6 mois)</h2>
+              </div>
+              {mouvementsData.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '3rem', color: '#64748b' }}>
+                  Aucune donnée disponible
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height={320}>
+                  <LineChart data={mouvementsData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#bae6fd" />
+                    <XAxis
+                      dataKey="mois"
+                      style={{ fontSize: '12px', fontWeight: '600' }}
+                      stroke="#64748b"
+                    />
+                    <YAxis
+                      style={{ fontSize: '12px', fontWeight: '600' }}
+                      stroke="#64748b"
+                      tickFormatter={(value) => value.toLocaleString()}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        background: '#fff',
+                        border: '1px solid #bae6fd',
+                        borderRadius: '8px',
+                        boxShadow: '0 4px 12px rgba(10,197,255,0.1)'
+                      }}
+                      formatter={(value) => value.toLocaleString()}
+                    />
+                    <Legend wrapperStyle={{ paddingTop: '20px' }} />
+                    <Line
+                      type="monotone"
+                      dataKey="entrees"
+                      stroke="#1a7f37"
+                      strokeWidth={3}
+                      name="Entrées"
+                      dot={{ fill: '#1a7f37', r: 5 }}
+                      activeDot={{ r: 7 }}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="sorties"
+                      stroke="#cf222e"
+                      strokeWidth={3}
+                      name="Sorties"
+                      dot={{ fill: '#cf222e', r: 5 }}
+                      activeDot={{ r: 7 }}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              )}
+            </div>
+            {/* ────────────────────────────────────────────────────────────────── */}
 
             {/* Top 10 Bacs */}
             <div style={styles.card}>
